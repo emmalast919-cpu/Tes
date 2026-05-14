@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discord Verification</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0d0f12;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    /* Animated background blobs */
+    .bg-blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      pointer-events: none;
+      animation: float 8s ease-in-out infinite;
+    }
+    .bg-blob:nth-child(1) { width: 500px; height: 500px; background: #5865f2; top: -100px; left: -100px; animation-delay: 0s; }
+    .bg-blob:nth-child(2) { width: 400px; height: 400px; background: #57f287; bottom: -100px; right: -100px; animation-delay: 3s; }
+    .bg-blob:nth-child(3) { width: 300px; height: 300px; background: #eb459e; top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: 1.5s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50%       { transform: translateY(-30px) scale(1.05); }
+    }
+
+    .card {
+      position: relative;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 460px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+    }
+
+    .discord-logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+    }
+
+    /* ── Loading state ── */
+    #state-loading .spinner {
+      width: 56px;
+      height: 56px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #5865f2;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #state-loading h1 { font-size: 1.5rem; color: #c9d1d9; margin-bottom: 8px; }
+    #state-loading p  { color: #8b949e; font-size: 0.95rem; }
+
+    /* ── Success state ── */
+    #state-success { display: none; }
+    #state-success .checkmark {
+      width: 72px;
+      height: 72px;
+      background: rgba(87, 242, 135, 0.15);
+      border: 2px solid #57f287;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 2rem;
+      animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+    #state-success h1 { font-size: 1.8rem; font-weight: 700; color: #57f287; margin-bottom: 8px; }
+    #state-success .subtitle { color: #8b949e; margin-bottom: 28px; font-size: 0.95rem; }
+
+    .user-card {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .user-card.show { display: flex; }
+    .user-card img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid #57f287;
+    }
+    .user-card .user-info .name { font-weight: 600; font-size: 1rem; }
+    .user-card .user-info .tag  { font-size: 0.8rem; color: #57f287; margin-top: 2px; }
+
+    .success-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(87, 242, 135, 0.1);
+      border: 1px solid rgba(87, 242, 135, 0.3);
+      color: #57f287;
+      border-radius: 999px;
+      padding: 8px 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    /* ── Error state ── */
+    #state-error { display: none; }
+    #state-error .error-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(237, 66, 69, 0.15);
+      border: 2px solid #ed4245;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 2rem;
+    }
+    #state-error h1     { font-size: 1.8rem; font-weight: 700; color: #ed4245; margin-bottom: 8px; }
+    #state-error p      { color: #8b949e; margin-bottom: 24px; font-size: 0.95rem; }
+    #state-error .error-message {
+      background: rgba(237,66,69,0.1);
+      border: 1px solid rgba(237,66,69,0.2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: #ff7b7b;
+      margin-bottom: 24px;
+      word-break: break-word;
+    }
+
+    .btn {
+      display: inline-block;
+      background: #5865f2;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 28px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:hover  { background: #4752c4; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .footer {
+      margin-top: 28px;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background blobs -->
+  <div class="bg-blob"></div>
+  <div class="bg-blob"></div>
+  <div class="bg-blob"></div>
+
+  <div class="card">
+
+    <!-- Discord Logo -->
+    <svg class="discord-logo" viewBox="0 0 127.14 96.36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z" fill="#5865F2"/>
+    </svg>
+
+    <!-- Loading State -->
+    <div id="state-loading">
+      <div class="spinner"></div>
+      <h1>Verifying...</h1>
+      <p>Please wait while we complete your verification.</p>
+    </div>
+
+    <!-- Success State -->
+    <div id="state-success">
+      <div class="checkmark">✓</div>
+      <h1>Verified!</h1>
+      <p class="subtitle">You have been successfully authorized.</p>
+      <div class="user-card" id="user-card">
+        <img id="user-avatar" src="" alt="Avatar" />
+        <div class="user-info">
+          <div class="name" id="user-name"></div>
+          <div class="tag">✅ Authorized</div>
+        </div>
+      </div>
+      <div class="success-badge">
+        <span>🛡️</span>
+        <span>Access Granted — You can now close this tab</span>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="state-error">
+      <div class="error-icon">✕</div>
+      <h1>Verification Failed</h1>
+      <p>Something went wrong during verification.</p>
+      <div class="error-message" id="error-message"></div>
+      <a class="btn" href="javascript:history.back()">← Try Again</a>
+    </div>
+
+    <div class="footer">Powered by Discord OAuth2</div>
+  </div>
+
+  <script>
+    // ============================================================
+    // CONFIGURATION — set this to your Replit bot server URL
+    // ============================================================
+    const BOT_SERVER_URL = 'https://YOUR-REPLIT-URL.replit.app';
+    // ============================================================
+
+    function showState(id) {
+      ['state-loading', 'state-success', 'state-error'].forEach(s => {
+        document.getElementById(s).style.display = s === id ? 'block' : 'none';
+      });
+    }
+
+    async function verify() {
+      const params  = new URLSearchParams(window.location.search);
+      const code    = params.get('code');
+      const guildId = params.get('state');
+
+      if (!code) {
+        document.getElementById('error-message').textContent =
+          'No authorization code found. Please go back to Discord and click the Verify button again.';
+        showState('state-error');
+        return;
+      }
+
+      showState('state-loading');
+
+      try {
+        const res = await fetch(`${BOT_SERVER_URL}/verify`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ code, guildId }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          showState('state-success');
+
+          if (data.username) {
+            document.getElementById('user-name').textContent   = data.username;
+            document.getElementById('user-avatar').src         = data.avatar || '';
+            document.getElementById('user-card').classList.add('show');
+          }
+
+          // Clean the URL so the code can't be reused on refresh
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          document.getElementById('error-message').textContent =
+            data.message || 'An unknown error occurred.';
+          showState('state-error');
+        }
+
+      } catch (err) {
+        document.getElementById('error-message').textContent =
+          `Could not reach the verification server. Make sure the bot is online.\n\nDetails: ${err.message}`;
+        showState('state-error');
+      }
+    }
+
+    verify();
+  </script>
+</body>
+</html>
